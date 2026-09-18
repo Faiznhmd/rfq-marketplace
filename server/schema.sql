@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS rfqs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Additive and repeatable: existing RFQs keep their data and default to OPEN.
+ALTER TABLE rfqs ADD COLUMN IF NOT EXISTS status VARCHAR(6) NOT NULL DEFAULT 'OPEN'
+  CONSTRAINT rfqs_status_check CHECK (status IN ('OPEN', 'CLOSED'));
+
 CREATE TABLE IF NOT EXISTS quotations (
   id UUID PRIMARY KEY,
   rfq_id UUID NOT NULL REFERENCES rfqs(id) ON DELETE CASCADE,
@@ -28,6 +32,18 @@ CREATE TABLE IF NOT EXISTS quotations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (rfq_id, supplier_id)
 );
+
+-- Preserve all existing quotations as ACTIVE on first upgrade.
+ALTER TABLE quotations ADD COLUMN IF NOT EXISTS status VARCHAR(9) NOT NULL DEFAULT 'ACTIVE'
+  CONSTRAINT quotations_status_check CHECK (status IN ('ACTIVE', 'WITHDRAWN'));
+
+CREATE TABLE IF NOT EXISTS saved_rfqs (
+  supplier_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  rfq_id UUID NOT NULL REFERENCES rfqs(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (supplier_id, rfq_id)
+);
+CREATE INDEX IF NOT EXISTS saved_rfqs_rfq_idx ON saved_rfqs(rfq_id);
 
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash CHAR(64) PRIMARY KEY,

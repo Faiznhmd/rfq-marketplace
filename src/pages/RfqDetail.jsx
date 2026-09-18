@@ -10,6 +10,7 @@ import {
   Pencil,
   Send,
   Trash2,
+  LockKeyhole,
 } from 'lucide-react';
 import { useAuth } from '../auth';
 import { api } from '../api';
@@ -34,9 +35,25 @@ export default function RfqDetail() {
   const { user } = useAuth();
   const { data, loading, error, reload } = useResource(`/rfqs/${id}`);
   const [deleting, setDeleting] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [closeError, setCloseError] = useState(null);
+  const [closeNotice, setCloseNotice] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
   const buyer = user.role === 'BUYER';
+  async function closeRfq() {
+    setClosing(true);
+    setCloseError(null);
+    try {
+      await api(`/rfqs/${id}/status`, { method: 'PATCH', body: { status: 'CLOSED' } });
+      setCloseNotice('RFQ closed. Existing quotations remain available.');
+      reload();
+    } catch (error) {
+      setCloseError(error);
+    } finally {
+      setClosing(false);
+    }
+  }
   if (loading) return <Loading label="Loading request details…" />;
   if (error)
     return (
@@ -55,9 +72,9 @@ export default function RfqDetail() {
         <ArrowLeft size={16} />
         {buyer ? 'Back to my RFQs' : 'Back to available requests'}
       </Link>
-      {location.state?.notice && (
+      {(closeNotice || location.state?.notice) && (
         <p className="success-banner" role="status">
-          {location.state.notice}
+          {closeNotice || location.state.notice}
         </p>
       )}
       <div className="detail-heading">
@@ -65,12 +82,19 @@ export default function RfqDetail() {
           <div className="eyebrow">REQUEST FOR QUOTATION</div>
           <h1>{rfq.productName}</h1>
           <div className="detail-subtitle">
-            <Status open={rfq.isOpen} />
+            <Status open={rfq.isOpen} status={rfq.status} />
+            {!rfq.isOpen && rfq.status !== 'CLOSED' && <span>Deadline passed</span>}
             <span>Published {dateLabel(rfq.createdAt)}</span>
           </div>
         </div>
         {buyer && (
           <div className="detail-actions">
+            {rfq.status === 'OPEN' && (
+              <button className="button secondary" onClick={closeRfq} disabled={closing}>
+                <LockKeyhole size={16} />
+                {closing ? 'Closing...' : 'Close RFQ'}
+              </button>
+            )}
             <Link className="button secondary" to={`/rfqs/${id}/edit`}>
               <Pencil size={16} />
               Edit request
@@ -85,6 +109,7 @@ export default function RfqDetail() {
           </div>
         )}
       </div>
+      {closeError && <ErrorState error={closeError} />}
       <div className="detail-layout">
         <article className="detail-card">
           <div className="section-label">
@@ -132,8 +157,22 @@ export default function RfqDetail() {
             {quotation ? (
               <div className="quote-confirmation">
                 <CheckCircle2 size={29} />
-                <h2>Your quotation is submitted.</h2>
-                <p>The buyer can now view your response.</p>
+                <h2>
+                  {quotation.status === 'WITHDRAWN'
+                    ? 'Your quotation is withdrawn.'
+                    : 'Your quotation is submitted.'}
+                </h2>
+                {quotation.status === 'WITHDRAWN' ? (
+                  <>
+                    <span className="status closed">WITHDRAWN</span>
+                    <p>
+                      This quotation remains in your history but is no longer shown to the buyer.
+                      You cannot resubmit it.
+                    </p>
+                  </>
+                ) : (
+                  <p>The buyer can now view your response.</p>
+                )}
                 <dl>
                   <div>
                     <dt>Quoted price</dt>
@@ -156,8 +195,10 @@ export default function RfqDetail() {
                 <Clock3 size={28} />
                 <h2>This request has closed.</h2>
                 <p>
-                  The quotation deadline has passed. Browse open requests to find another
-                  opportunity.
+                  {rfq.status === 'CLOSED'
+                    ? 'The buyer has closed this request.'
+                    : 'The quotation deadline has passed.'}{' '}
+                  Browse open requests to find another opportunity.
                 </p>
                 <Link className="button secondary" to="/rfqs">
                   Browse RFQs
@@ -273,30 +314,39 @@ function BuyerQuotations({ id }) {
           Supplier quotations will appear here as they respond to your request.
         </EmptyState>
       ) : (
-        <div className="quotation-grid">
-          {data.quotations.map((quote) => (
-            <article className="quotation-card" key={quote.id}>
-              <div className="quote-card-top">
-                <div className="supplier-name">
-                  <span className="avatar">{quote.supplierName.slice(0, 1).toUpperCase()}</span>
-                  <div>
-                    <h3>{quote.supplierName}</h3>
-                    <span>Submitted {dateLabel(quote.createdAt)}</span>
-                  </div>
-                </div>
-                <strong className="quote-price">{priceLabel(quote.price)}</strong>
-              </div>
-              <p className="delivery-time">
-                <Clock3 size={16} />
-                {quote.deliveryTime}
-              </p>
-              {quote.message ? (
-                <p className="quote-message">{quote.message}</p>
-              ) : (
-                <p className="no-message">No additional notes.</p>
-              )}
-            </article>
-          ))}
+        <div className="comparison-wrap">
+          <table className="comparison-table" aria-label="Quotation comparison">
+            <thead>
+              <tr>
+                <th scope="col">Supplier</th>
+                <th scope="col">Quoted price (USD)</th>
+                <th scope="col">Estimated delivery time</th>
+                <th scope="col">Message / notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.quotations.map((quote) => (
+                <tr key={quote.id}>
+                  <th scope="row">
+                    <div className="supplier-name">
+                      <span className="avatar">{quote.supplierName.slice(0, 1).toUpperCase()}</span>
+                      <div>
+                        <h3>{quote.supplierName}</h3>
+                        <span>Submitted {dateLabel(quote.createdAt)}</span>
+                      </div>
+                    </div>
+                  </th>
+                  <td data-label="Quoted price (USD)">
+                    <strong className="comparison-price">{priceLabel(quote.price)}</strong>
+                  </td>
+                  <td data-label="Estimated delivery time">{quote.deliveryTime}</td>
+                  <td data-label="Message / notes" className="comparison-message">
+                    {quote.message || 'No additional notes.'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </section>

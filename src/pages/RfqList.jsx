@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, MapPin, Plus, Search } from 'lucide-react';
 import { useAuth } from '../auth';
+import DashboardSummary from '../DashboardSummary';
 import {
   DeleteDialog,
   EmptyState,
@@ -21,6 +22,7 @@ export default function RfqList() {
   const { data, loading, error, reload } = useResource(
     buyer ? '/rfqs/my' : `/rfqs?${new URLSearchParams({ q, location })}`,
   );
+  const summary = useResource('/dashboard/summary');
   const [deleting, setDeleting] = useState(null);
   const [notice, setNotice] = useState('');
   function search(event) {
@@ -46,6 +48,7 @@ export default function RfqList() {
           ? 'Manage your requests and keep every supplier quotation in one place.'
           : 'Explore open requests and put your expertise to work.'}
       </PageHeading>
+      <DashboardSummary buyer={buyer} {...summary} />
       <section className="intro-strip">
         <span className="intro-number">{buyer ? '01' : '→'}</span>
         <div>
@@ -161,6 +164,7 @@ export default function RfqList() {
             setDeleting(null);
             setNotice('RFQ deleted successfully.');
             reload();
+            summary.reload();
           }}
         />
       )}

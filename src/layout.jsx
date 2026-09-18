@@ -58,6 +58,11 @@ export function Layout() {
                 My quotations
               </NavLink>
             )}
+            {!buyer && (
+              <NavLink to="/saved-rfqs" onClick={() => setMenu(false)}>
+                Saved RFQs
+              </NavLink>
+            )}
             <div className="user-chip">
               <span className="avatar">{user.name.slice(0, 1).toUpperCase()}</span>
               <div>

@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { api } from '../api';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, Clock3, MapPin } from 'lucide-react';
 import {
@@ -42,6 +44,9 @@ export default function Quotations() {
           {data.quotations.map((quote) => (
             <article className="history-card" key={quote.id}>
               <div className="history-main">
+                <span className={`status ${quote.status === 'WITHDRAWN' ? 'closed' : 'open'}`}>
+                  {quote.status}
+                </span>
                 <span className="eyebrow">SUBMITTED {dateLabel(quote.createdAt)}</span>
                 <h2>
                   <Link to={`/rfqs/${quote.rfqId}`}>{quote.productName}</Link>
@@ -65,11 +70,39 @@ export default function Quotations() {
                   View request
                   <ArrowUpRight size={16} />
                 </Link>
+                {quote.status === 'ACTIVE' && (
+                  <WithdrawQuotation id={quote.id} onWithdrawn={reload} />
+                )}
               </div>
             </article>
           ))}
         </div>
       )}
     </>
+  );
+}
+
+function WithdrawQuotation({ id, onWithdrawn }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  async function withdraw() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/quotations/${id}/status`, { method: 'PATCH', body: { status: 'WITHDRAWN' } });
+      onWithdrawn();
+    } catch (error) {
+      setError(error);
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="withdraw-action">
+      <button className="button secondary small" disabled={busy} onClick={withdraw}>
+        {busy ? 'Withdrawing...' : 'Withdraw quotation'}
+      </button>
+      <p className="withdraw-hint">Withdrawal is permanent. Your history is kept.</p>
+      {error && <ErrorState error={error} />}
+    </div>
   );
 }

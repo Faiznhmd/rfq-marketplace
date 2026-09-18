@@ -18,6 +18,7 @@ const AuthPage = lazy(() => import('./pages/AuthPage'));
 const RfqList = lazy(() => import('./pages/RfqList'));
 const RfqForm = lazy(() => import('./pages/RfqForm'));
 const RfqDetail = lazy(() => import('./pages/RfqDetail'));
+const SavedRfqs = lazy(() => import('./pages/SavedRfqs'));
 const Quotations = lazy(() => import('./pages/Quotations'));
 
 class ErrorBoundary extends Component {
@@ -73,6 +74,14 @@ function App() {
                   element={
                     <Protected role="BUYER">
                       <RfqForm />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/saved-rfqs"
+                  element={
+                    <Protected role="SUPPLIER">
+                      <SavedRfqs />
                     </Protected>
                   }
                 />

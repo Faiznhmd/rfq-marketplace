@@ -10,6 +10,7 @@ import {
   Search,
   LoaderCircle,
   Inbox,
+  Bookmark,
 } from 'lucide-react';
 import { api } from './api';
 
@@ -132,22 +133,31 @@ export function PageHeading({ eyebrow, title, children, action }) {
     </div>
   );
 }
-export function Status({ open }) {
+export function Status({ open, status }) {
   return (
-    <span className={`status ${open ? 'open' : 'closed'}`}>
+    <span
+      className={`status ${open ? 'open' : 'closed'}`}
+      title={
+        open
+          ? 'Open for quotations'
+          : status === 'CLOSED'
+            ? 'Closed by the buyer'
+            : 'Quotation deadline passed'
+      }
+    >
       <span />
-      {open ? 'Open for quotes' : 'Deadline passed'}
+      {open ? 'OPEN' : 'CLOSED'}
     </span>
   );
 }
-export function RfqCard({ rfq, buyer, onDelete }) {
+export function RfqCard({ rfq, buyer, onDelete, savedPage = false, onSavedChange }) {
   return (
     <article className="rfq-card">
       <div className="card-top">
         <span className="product-icon">
           <Package size={21} />
         </span>
-        <Status open={rfq.isOpen} />
+        <Status open={rfq.isOpen} status={rfq.status} />
       </div>
       <h2>
         <Link to={`/rfqs/${rfq.id}`}>{rfq.productName}</Link>
@@ -184,7 +194,50 @@ export function RfqCard({ rfq, buyer, onDelete }) {
           </div>
         )}
       </div>
+      {!buyer && <SaveRfqAction rfq={rfq} removeLabel={savedPage} onChange={onSavedChange} />}
     </article>
+  );
+}
+
+function SaveRfqAction({ rfq, removeLabel, onChange }) {
+  const [saved, setSaved] = useState(rfq.isSaved);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  useEffect(() => setSaved(rfq.isSaved), [rfq.isSaved]);
+  async function toggle() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/rfqs/${rfq.id}/saved`, { method: saved ? 'DELETE' : 'PUT', body: {} });
+      setSaved(!saved);
+      onChange?.();
+    } catch (error) {
+      setError(error);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="save-rfq-action">
+      <button
+        className="button secondary small"
+        aria-pressed={Boolean(saved)}
+        disabled={busy}
+        onClick={toggle}
+      >
+        <Bookmark size={16} fill={saved ? 'currentColor' : 'none'} />
+        {busy
+          ? saved
+            ? 'Removing...'
+            : 'Saving...'
+          : saved
+            ? removeLabel
+              ? 'Remove'
+              : 'Saved'
+            : 'Save'}
+      </button>
+      {error && <ErrorState error={error} />}
+    </div>
   );
 }
 

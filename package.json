@@ -12,7 +12,7 @@
     "start": "node server/index.js",
     "db:migrate": "node server/migrate.js",
     "check": "node --check server/index.js && node --check server/app.js && node --check server/auth.js && node --check server/database.js && node --check server/routes.js",
-    "test": "node --test --test-concurrency=1 tests/api.test.js",
+    "test": "node --test --test-concurrency=1 tests/api.test.js tests/features.test.js tests/supplier-features.test.js",
     "test:e2e": "playwright test",
     "dev:api": "node --watch server/index.js",
     "dev:web": "vite --host 127.0.0.1",

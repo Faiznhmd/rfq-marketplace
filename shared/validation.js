@@ -80,3 +80,9 @@ export function fieldErrors(error) {
   for (const issue of error.issues) fields[issue.path[0] || 'form'] ??= issue.message;
   return fields;
 }
+
+// Closing is the only status transition offered by this feature.
+export const closeRfqSchema = z.object({ status: z.literal('CLOSED') }).strict();
+
+export const withdrawQuotationSchema = z.object({ status: z.literal('WITHDRAWN') }).strict();
+export const emptyBodySchema = z.object({}).strict();
