@@ -130,11 +130,11 @@ Use one Node web service with a hosted PostgreSQL database. No container setup i
 
 The host must provide HTTPS for production session cookies. After deployment, verify signup, both roles' workflows and persistence against the hosted database.
 
-**Live application URL:** Pending deployment.
+**Live application URL:** https://rfq-marketplace-1bu7.onrender.com
 
 **GitHub repository URL:** Pending publication.
 
-No online deployment or published repository has been verified. Add the real URLs here before submitting.
+The public service is deployed. Verify the authentication checklist below after updating production settings and redeploying. Add the GitHub repository URL before submitting.
 
 ## Assumptions and limitations
 
@@ -154,3 +154,24 @@ No online deployment or published repository has been verified. Add the real URL
 - **Cross-site request rejected:** check the browser port and `APP_ORIGIN`, then restart the app.
 - **Port already in use:** stop the earlier dev process before starting another.
 - **Database connection fails:** check your provider's URL, SSL settings and network access. Never put the URL in frontend code.
+
+### Render authentication configuration
+
+Set these values in Render's Environment settings (changing the local .env does not update Render):
+
+```dotenv
+NODE_ENV=production
+APP_ORIGIN=https://rfq-marketplace-1bu7.onrender.com
+TRUST_PROXY=1
+```
+
+Save and redeploy. Keep DATABASE_URL in Render's private environment settings.
+The app treats RENDER=true as a production deployment even if NODE_ENV was accidentally copied from local development. When APP_ORIGIN is omitted on Render, the app uses Render's trusted RENDER_EXTERNAL_URL. An explicit APP_ORIGIN takes precedence (for example, for a custom domain). Localhost or malformed production origins cause an actionable startup failure instead of a silently broken login. Startup logs show only the effective authentication mode and public origin.
+
+The frontend calls relative /api URLs with credentials: same-origin. Frontend and backend share an origin, so cross-origin CORS permissions are unnecessary. Mutation requests remain subject to exact-origin and cross-site request checks. Origins are never inferred from untrusted Host or X-Forwarded-Host headers.
+
+Production session cookies use the __Host-rfq_session name, HttpOnly, Secure, SameSite=Lax and Path=/, with no Domain attribute. Local development uses a non-Secure cookie and allows equivalent loopback names on the configured port.
+
+After deployment, verify login returns 200, the browser stores the secure session cookie, /api/auth/me returns 200, refresh restores the user, and logout returns 204 and clears the session. A /api/auth/me 401 before login is expected.
+
+The production browser test uses an isolated database and intercepts HTTPS-origin requests into a local production-mode backend, modeling Render's proxy. It verifies real API/session behavior and browser cookie handling without accessing the live service. It does not replace verification on the deployed host.

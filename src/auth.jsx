@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { api } from './api';
 import { Loading, ErrorState } from './components';
-
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 

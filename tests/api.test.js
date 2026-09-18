@@ -7,6 +7,7 @@ import request from 'supertest';
 import { migrate } from '../server/database.js';
 import { openTestDatabase } from './database.js';
 import { createApp } from '../server/app.js';
+import { resolveAuthConfig } from '../server/origin.js';
 
 let db, app, buyer, buyer2, supplier, supplier2, rfqId, buyerId, supplierId;
 const password = 'Test-only-password-42';
@@ -337,4 +338,112 @@ test('production accepts only the configured origin without development aliases'
   ]) {
     await request(productionApp).post('/api/auth/login').set('Origin', origin).send({}).expect(403);
   }
+});
+
+test('Render uses its public origin and production cookies even if NODE_ENV was copied from development', () => {
+  const config = resolveAuthConfig({
+    RENDER: 'true',
+    RENDER_EXTERNAL_URL: 'https://rfq-marketplace-1bu7.onrender.com',
+    NODE_ENV: 'development',
+  });
+  assert.deepEqual(config, {
+    production: true,
+    appOrigin: 'https://rfq-marketplace-1bu7.onrender.com',
+    trustProxy: true,
+  });
+  assert.equal(
+    resolveAuthConfig({
+      RENDER: 'true',
+      RENDER_EXTERNAL_URL: 'https://service.onrender.com',
+      APP_ORIGIN: ' https://custom.example/ ',
+    }).appOrigin,
+    'https://custom.example',
+  );
+  assert.deepEqual(resolveAuthConfig({}), {
+    production: false,
+    appOrigin: 'http://localhost:5173',
+    trustProxy: false,
+  });
+});
+
+test('production fails early for localhost, missing origins, credentials, paths and invalid proxy settings', () => {
+  assert.throws(() => resolveAuthConfig({ NODE_ENV: 'production' }), /APP_ORIGIN/);
+  for (const origin of [
+    'http://localhost:5173',
+    'https://localhost:5173',
+    'https://127.0.0.1',
+    'https://[::1]',
+    'https://example.com/login',
+    'https://example.com?x=1',
+    'https://user:password@example.com',
+    'not a url',
+  ]) {
+    assert.throws(() => resolveAuthConfig({ RENDER: 'true', APP_ORIGIN: origin }), /APP_ORIGIN/);
+  }
+  assert.throws(() => resolveAuthConfig({ TRUST_PROXY: 'true' }), /TRUST_PROXY/);
+});
+
+test('production login, session restoration and logout work with Render proxy headers', async () => {
+  const origin = 'https://rfq-marketplace-1bu7.onrender.com';
+  const productionApp = createApp(
+    db,
+    resolveAuthConfig({ RENDER: 'true', RENDER_EXTERNAL_URL: origin }),
+  );
+  await request(productionApp).get('/api/auth/me').expect(401);
+  const login = await request(productionApp)
+    .post('/api/auth/login')
+    .set('Origin', origin)
+    .set('Sec-Fetch-Site', 'same-origin')
+    .set('X-Forwarded-Proto', 'https')
+    .send({ email: 'buyer@example.test', password })
+    .expect(200);
+  const header = login.headers['set-cookie'][0];
+  assert.match(header, /^__Host-rfq_session=/);
+  for (const flag of ['HttpOnly', 'Secure', 'SameSite=Lax', 'Path=/'])
+    assert.ok(header.includes(flag));
+  assert.ok(!/;\s*Domain=/i.test(header));
+  const cookie = header.split(';')[0];
+  for (let i = 0; i < 2; i++) {
+    const response = await request(productionApp)
+      .get('/api/auth/me')
+      .set('Cookie', cookie)
+      .expect(200);
+    assert.equal(response.body.user.id, buyerId);
+  }
+  const logout = await request(productionApp)
+    .post('/api/auth/logout')
+    .set('Origin', origin)
+    .set('Cookie', cookie)
+    .send({})
+    .expect(204);
+  assert.match(logout.headers['set-cookie'][0], /Expires=Thu, 01 Jan 1970/);
+  await request(productionApp).get('/api/auth/me').set('Cookie', cookie).expect(401);
+});
+
+test('production does not trust attacker origins or spoofed host headers', async () => {
+  const origin = 'https://rfq-marketplace-1bu7.onrender.com';
+  const productionApp = createApp(
+    db,
+    resolveAuthConfig({ RENDER: 'true', RENDER_EXTERNAL_URL: origin }),
+  );
+  for (const attacker of [
+    'https://other-service.onrender.com',
+    'http://localhost:5173',
+    'https://evil.example',
+  ]) {
+    await request(productionApp)
+      .post('/api/auth/login')
+      .set('Origin', attacker)
+      .set('Host', new URL(attacker).host)
+      .set('X-Forwarded-Host', new URL(attacker).host)
+      .set('Sec-Fetch-Site', 'same-origin')
+      .send({})
+      .expect(403);
+  }
+  await request(productionApp)
+    .post('/api/auth/login')
+    .set('Origin', origin)
+    .set('Sec-Fetch-Site', 'cross-site')
+    .send({})
+    .expect(403);
 });
