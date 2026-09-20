@@ -1,7 +1,6 @@
-import React, { Component, lazy, Suspense } from 'react';
+import { Component, lazy, Suspense, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
 import { AuthProvider, Protected } from './auth';
 import { Layout } from './layout';
 import { ErrorState, Loading } from './components';

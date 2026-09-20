@@ -16,6 +16,8 @@ A marketplace where buyers post requests for quotation (RFQs) and suppliers resp
 - Buyers compare supplier, price, delivery time and notes in a responsive table (cards on mobile).
 - Backend role/ownership checks, input validation, error handling and responsive pages with loading, empty and error states.
 
+For a code-based study guide covering the stack, security, database and technical decisions, read [INTERVIEW.md](INTERVIEW.md).
+
 ## Technology stack
 
 React, React Router and Vite for the frontend; Node.js and Express for the backend; PostgreSQL through `pg` for persistence. Zod validates input on both the frontend and backend. The UI uses custom CSS, Lucide icons and locally hosted fonts.

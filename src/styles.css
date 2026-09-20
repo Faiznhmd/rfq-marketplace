@@ -978,25 +978,6 @@ strong {
 .received-quotes {
   margin-top: 40px;
 }
-.quotation-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-.quotation-card {
-  border: 1px solid var(--border);
-  background: #fff;
-  border-radius: 12px;
-  padding: 25px;
-  min-width: 0;
-}
-.quote-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 22px;
-}
 .supplier-name {
   display: flex;
   gap: 10px;
@@ -1016,20 +997,6 @@ strong {
   display: block;
   margin-top: 5px;
 }
-.quote-price {
-  color: var(--green);
-  font-family: var(--heading);
-  font-size: 20px;
-  white-space: nowrap;
-}
-.delivery-time {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 12px;
-  color: #647e74;
-  overflow-wrap: anywhere;
-}
 .quote-message {
   white-space: pre-wrap;
   font-size: 12px;
@@ -1038,12 +1005,6 @@ strong {
   padding-top: 17px;
   margin-top: 17px;
   overflow-wrap: anywhere;
-}
-.no-message {
-  font-size: 12px;
-  color: #8b9b95;
-  margin-top: 15px;
-  font-style: italic;
 }
 .quote-confirmation {
   border: 1px solid #c9dfd3;
@@ -1464,9 +1425,6 @@ strong {
   .quote-form {
     padding: 25px;
   }
-  .quotation-grid {
-    grid-template-columns: 1fr;
-  }
   .auth-shell {
     grid-template-columns: 1fr 1.1fr;
   }
@@ -1813,17 +1771,6 @@ strong {
   }
   .quote-confirmation {
     padding: 25px;
-  }
-  .quote-card-top {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 20px;
-  }
-  .quotation-card {
-    padding: 23px;
-  }
-  .quote-price {
-    font-size: 24px;
   }
   .history-card {
     flex-direction: column;
